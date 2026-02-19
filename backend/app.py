@@ -66,6 +66,14 @@ def _parse_bug_report(line: str) -> dict | None:
     return None
 
 
+def _clone_url_with_token(repo_url: str) -> str:
+    """If GITHUB_TOKEN is set, return a clone URL with auth so Railway/server can clone without prompt."""
+    token = os.getenv("GITHUB_TOKEN", "").strip()
+    if not token or "github.com" not in repo_url:
+        return repo_url
+    return repo_url.replace("https://", f"https://{token}@", 1)
+
+
 # ---------------------------------------------------------------------------
 # Commit results.json to the healing branch
 # ---------------------------------------------------------------------------
@@ -368,8 +376,9 @@ def analyze():
     tmp_dir = None
     try:
         tmp_dir = tempfile.mkdtemp(prefix="velo_")
+        clone_url = _clone_url_with_token(repo_url)
         try:
-            git.Repo.clone_from(repo_url, tmp_dir)
+            git.Repo.clone_from(clone_url, tmp_dir)
         except git.GitCommandError as exc:
             return jsonify({"error": f"Failed to clone repository: {exc}"}), 400
 
@@ -426,8 +435,9 @@ def analyze_stream():
             tmp_dir = tempfile.mkdtemp(prefix="velo_stream_")
             emit({"type": "log", "tag": "INFO", "message": f"Cloning repository..."})
 
+            clone_url = _clone_url_with_token(repo_url)
             try:
-                git.Repo.clone_from(repo_url, tmp_dir)
+                git.Repo.clone_from(clone_url, tmp_dir)
                 emit({"type": "log", "tag": "INFO", "message": "Repository cloned ✓"})
             except git.GitCommandError as exc:
                 emit({"type": "error", "message": f"Failed to clone repository: {exc}"})
