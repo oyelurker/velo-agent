@@ -11,8 +11,8 @@ langgraph==0.2.53
 # Docker Python SDK — used to sandbox test execution inside containers
 docker==7.1.0
 
-# Google Gemini LLM — used in Node 2 (LLM Solver) for log analysis and fix generation
-google-generativeai==0.8.3
+# Google Gemini LLM — new official SDK (replaces deprecated google-generativeai)
+google-genai>=1.0.0
 
 # Git automation — used in Node 3 (GitOps) to branch, commit, and push
 gitpython==3.1.43

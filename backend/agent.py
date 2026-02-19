@@ -55,7 +55,8 @@ from typing import Any, Dict, List, Optional
 
 import docker
 import git
-import google.generativeai as genai
+from google import genai
+from google.genai import types as genai_types
 from dotenv import load_dotenv
 from langgraph.graph import END, StateGraph
 from typing_extensions import TypedDict
@@ -69,11 +70,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("velo.agent")
 
-# Configure Gemini once at module load (key comes from .env, never hardcoded)
+# Build the Gemini client once at module load
 _GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not _GEMINI_API_KEY:
     logger.warning("GEMINI_API_KEY not set — Node 2 (LLM Solver) will fail.")
-genai.configure(api_key=_GEMINI_API_KEY)
+_gemini_client = genai.Client(api_key=_GEMINI_API_KEY)
 
 # ---------------------------------------------------------------------------
 # Constants — kept as named constants, NOT buried in logic
@@ -424,61 +425,58 @@ def node_llm_solver(state: AgentState) -> AgentState:
     # regex parser below to silently skip that line, keeping results clean.
     # -----------------------------------------------------------------------
     prompt = f"""You are Velo, an autonomous code-repair AI.
-Analyze the test failure logs and produce structured bug reports plus corrected source files.
+Analyze the test failure logs below and output EXACTLY two sections. Do not add any extra text, markdown headings, or explanations outside of these two sections.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MANDATORY OUTPUT FORMAT — deviating from this will break the system
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+=== SECTION 1: BUG REPORT LINES ===
+Output one line per bug in this EXACT format (copy the arrow character exactly):
+[BUG_TYPE] error in [filepath] line [line_number] {UNICODE_ARROW} Fix: [description]
 
-SECTION 1 — BUG REPORT LINES (one per bug, no blank lines between them):
+Rules:
+- BUG_TYPE must be exactly one of: LINTING, SYNTAX, LOGIC, TYPE_ERROR, IMPORT, INDENTATION
+- The arrow character is {UNICODE_ARROW} (Unicode U+2192) — do NOT use -> or =>
+- filepath is relative to the repo root (e.g. src/utils.py)
+- line_number is an integer
+- description is a short phrase (max 12 words)
 
-[BUG_TYPE] error in [filepath] line [line_number] {UNICODE_ARROW} Fix: [one-line description]
+Example output line:
+[SYNTAX] error in src/utils.py line 15 {UNICODE_ARROW} Fix: add missing colon after function definition
 
-Rules for SECTION 1:
-  • BUG_TYPE must be EXACTLY one of (case-sensitive, all caps):
-    LINTING | SYNTAX | LOGIC | TYPE_ERROR | IMPORT | INDENTATION
-  • The arrow MUST be the Unicode character → (U+2192). Never use -> or => or –>.
-  • [filepath] must be the file path relative to the repo root.
-  • [line_number] must be an integer.
-  • [one-line description] must be concise (≤ 12 words).
-
-SECTION 2 — FIXED FILES (immediately after all bug lines):
+=== SECTION 2: FIXED FILES (JSON) ===
+Immediately after the bug lines, output this JSON block with the FULL corrected file contents:
 
 ```json
 {{
   "fixes": {{
-    "relative/path/to/file.py": "COMPLETE corrected file content as a string"
+    "relative/path/to/file.py": "full corrected file content with newlines as \\n"
   }}
 }}
 ```
 
-Rules for SECTION 2:
-  • Include EVERY file that has at least one bug from Section 1.
-  • The value must be the FULL corrected file content, not a diff or snippet.
-  • Escape newlines as \\n inside the JSON string values.
-  • Do NOT omit this block even if there is only one bug.
+IMPORTANT:
+- Output Section 1 lines FIRST, then the JSON block.
+- Every file mentioned in Section 1 must appear in the fixes JSON.
+- The JSON values must be the COMPLETE file content, not diffs or snippets.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TEST FAILURE LOGS:
+=== TEST FAILURE LOGS ===
 {test_logs}
 
-SOURCE CODE CONTEXT:
+=== SOURCE CODE CONTEXT ===
 {source_context}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Respond now following the format above exactly:"""
+
+Now output Section 1 bug lines followed by the Section 2 JSON block:"""
 
     # -----------------------------------------------------------------------
-    # GEMINI API CALL
+    # GEMINI API CALL  (google-genai SDK — v1 endpoint, not deprecated v1beta)
     # -----------------------------------------------------------------------
-    model = genai.GenerativeModel("gemini-2.0-flash")
     raw_output = ""
 
     try:
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
-                temperature      = 0.05,   # Near-zero for deterministic, format-compliant output
-                max_output_tokens= 8192,
+        response = _gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                temperature       = 0.05,
+                max_output_tokens = 8192,
             ),
         )
         raw_output = response.text
