@@ -160,3 +160,28 @@ code, pre, .mono { font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 
 .pulse-dot    { animation: pulse-dot 1.5s ease-in-out infinite; }
 .blink-cursor { animation: blink 1s step-end infinite; border-right: 2px solid; }
 .wave-anim    { stroke-dasharray: 100; stroke-dashoffset: 100; animation: wave-dash 3s linear infinite; }
+
+/* ── Responsive — Tablet (≤ 768px) ── */
+@media (max-width: 768px) {
+  .stat-grid    { grid-template-columns: repeat(2, 1fr) !important; }
+  .run-grid     { grid-template-columns: 1fr !important; }
+  .node-grid    { grid-template-columns: 1fr !important; }
+  .run-info-grid{ grid-template-columns: 1fr !important; }
+
+  header { padding: 0 16px !important; }
+  main   { padding: 16px 12px 48px !important; }
+
+  table  { font-size: 11px !important; }
+  th, td { padding: 8px 10px !important; }
+}
+
+/* ── Responsive — Mobile (≤ 480px) ── */
+@media (max-width: 480px) {
+  .stat-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
+  .node-grid { grid-template-columns: 1fr !important; }
+
+  .hide-mobile { display: none !important; }
+
+  h1 { font-size: 2rem !important; }
+  h2 { font-size: 1.4rem !important; }
+}
