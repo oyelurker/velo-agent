@@ -42,10 +42,6 @@ LangGraph orchestration: 3-node autonomous healing pipeline.
 │      subprocess) for sandboxed container execution.              │
 │                                                                  │
 │  ✅  RESULTS.JSON WRITTEN TO REPO ROOT EVERY RUN                │
-│                                                                  │
-│  ✅  COMMIT IDENTITY                                             │
-│      GIT_AUTHOR_NAME / GIT_AUTHOR_EMAIL from .env are used       │
-│      so every commit is attributed to oyelurker on GitHub.       │
 └──────────────────────────────────────────────────────────────────┘
 """
 
@@ -169,8 +165,8 @@ def format_branch_name(raw_name: str) -> str:
       "  extra   spaces  "           → "EXTRA_SPACES_AI_Fix"
     """
     upper       = raw_name.strip().upper()
-    underscored = re.sub(r"\s+", "_", upper)               # spaces → underscores
-    safe        = re.sub(r"[^A-Z0-9_]", "", underscored)   # strip unsafe chars
+    underscored = re.sub(r"\s+", "_", upper)          # spaces → underscores
+    safe        = re.sub(r"[^A-Z0-9_]", "", underscored)  # strip unsafe chars
     return f"{safe}_AI_Fix"
 
 
@@ -233,7 +229,7 @@ def node_sandbox_tester(state: AgentState) -> AgentState:
     # -----------------------------------------------------------------------
     # DETECT ECOSYSTEM — choose image and test command dynamically
     # -----------------------------------------------------------------------
-    has_python = any(f.endswith(".py")           for f in discovered_test_files)
+    has_python = any(f.endswith(".py")          for f in discovered_test_files)
     has_js     = any(f.endswith((".js", ".jsx")) for f in discovered_test_files)
     has_ts     = any(f.endswith((".ts", ".tsx")) for f in discovered_test_files)
 
@@ -435,8 +431,8 @@ Respond now following the format above exactly:"""
         response = model.generate_content(
             prompt,
             generation_config=genai.types.GenerationConfig(
-                temperature       = 0.05,  # Near-zero for deterministic, format-compliant output
-                max_output_tokens = 8192,
+                temperature      = 0.05,   # Near-zero for deterministic, format-compliant output
+                max_output_tokens= 8192,
             ),
         )
         raw_output = response.text
@@ -539,8 +535,6 @@ def node_gitops(state: AgentState) -> AgentState:
     ✅  Every commit message starts with "[AI-AGENT] " (space included).
     ✅  Uses gitpython (git.Repo) — no subprocess / shell git calls.
     ✅  refspec pushed is explicitly the healing branch, never HEAD/main.
-    ✅  Commit identity set from GIT_AUTHOR_NAME / GIT_AUTHOR_EMAIL in .env
-        so commits appear under the oyelurker GitHub account.
     """
     logger.info("=" * 60)
     logger.info("NODE 3 — GITOPS")
@@ -564,7 +558,7 @@ def node_gitops(state: AgentState) -> AgentState:
         return {**state, "error": msg}
 
     # -----------------------------------------------------------------------
-    # GUARD 2 — Reject if the branch base name matches a protected branch
+    # GUARD 2 — Reject if the branch name (minus suffix) matches a protected name
     # Edge-case defence: e.g. "main_AI_Fix" would be rejected here.
     # -----------------------------------------------------------------------
     base_name = formatted_branch.replace("_AI_Fix", "").strip("_").lower()
@@ -590,7 +584,7 @@ def node_gitops(state: AgentState) -> AgentState:
 
     try:
         # -------------------------------------------------------------------
-        # GUARD 3 — Log current branch for audit trail
+        # GUARD 3 — Confirm we are NOT currently on main/master before branching
         # -------------------------------------------------------------------
         try:
             current = repo.active_branch.name
@@ -634,12 +628,12 @@ def node_gitops(state: AgentState) -> AgentState:
 
         # -------------------------------------------------------------------
         # COMMIT — STRICT PREFIX "[AI-AGENT] " (space after bracket is mandatory)
-        # Author identity is loaded from GIT_AUTHOR_NAME / GIT_AUTHOR_EMAIL in .env
-        # so every commit is attributed to the oyelurker GitHub account.
-        # Falls back to machine's global git config if env vars are absent.
+        # Commit message is built programmatically so the prefix is never missing.
+        # Author identity comes from GIT_AUTHOR_NAME / GIT_AUTHOR_EMAIL env vars
+        # (set in .env).  Falls back to the machine's global git config if unset.
         # -------------------------------------------------------------------
-        summary        = "; ".join(bug_reports[:5]) or "autonomous healing pass"
-        commit_message = f"[AI-AGENT] {summary}"   # MANDATORY PREFIX — structurally enforced
+        summary = "; ".join(bug_reports[:5]) or "autonomous healing pass"
+        commit_message = f"[AI-AGENT] {summary}"   # <-- MANDATORY PREFIX, ALWAYS applied
 
         author_name  = os.getenv("GIT_AUTHOR_NAME")
         author_email = os.getenv("GIT_AUTHOR_EMAIL")
@@ -649,10 +643,10 @@ def node_gitops(state: AgentState) -> AgentState:
             commit = repo.index.commit(commit_message, author=actor, committer=actor)
             logger.info("[Node 3] Committing as: %s <%s>", author_name, author_email)
         else:
+            # Fall back to whatever git global config has (user.name / user.email)
             commit = repo.index.commit(commit_message)
-            logger.info("[Node 3] Committing as: machine git global config")
-
-        logger.info("[Node 3] Commit: %s — %s", commit.hexsha[:10], commit_message)
+            logger.info("[Node 3] Committing as: git global config identity")
+        logger.info("[Node 3] Commit created: %s — %s", commit.hexsha[:10], commit_message)
 
         # -------------------------------------------------------------------
         # PUSH — ONLY the healing branch, never main/master
@@ -765,7 +759,7 @@ def run_healing_agent(repo_path: str, raw_branch_name: str) -> Dict[str, Any]:
         "error": None,
     }
 
-    # Compile and invoke the LangGraph pipeline (fully autonomous from here)
+    # Compile and invoke the LangGraph pipeline
     agent_graph = build_agent_graph()
     final_state = agent_graph.invoke(initial_state)
 
