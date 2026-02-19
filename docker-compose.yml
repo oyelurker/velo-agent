@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  # ── Backend: Flask healing agent ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - PORT=5000
+      - FLASK_ENV=production
+      - GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-oyelurker}
+      - GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-oyelurker@gmail.com}
+      - MAX_RETRIES=${MAX_RETRIES:-5}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+    volumes:
+      # Mount the Docker socket so the agent can spin up sandboxed containers
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Frontend: React dashboard served via Nginx ───────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:5000}
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
