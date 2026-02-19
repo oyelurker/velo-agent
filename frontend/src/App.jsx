@@ -187,19 +187,10 @@ function AnalyzingScreen({ repoUrl, liveLog }) {
 function AppContent() {
   const navigate = useNavigate();
   const { getIdToken } = useAuth();
-  const [loading,    setLoading]    = useState(false);
-  const [results,    setResults]    = useState(null);
-  const [error,      setError]      = useState('');
-  const [liveLog,    setLiveLog]    = useState([]);
-  const [analyzingRepo, setAnalyzingRepo] = useState('');
-
-  const liveLogRef = useRef([]);
-/* ── Root App ── */
-export default function App() {
   const {
     loading, setLoading,
     results, setResults,
-    error,   setError,
+    error, setError,
     liveLog, setLiveLog,
     analyzingRepo, setAnalyzingRepo,
     liveLogRef,
