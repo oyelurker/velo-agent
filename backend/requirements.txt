@@ -1,0 +1,24 @@
+# Velo CI/CD Healing Agent — Python Dependencies
+# Pin minor versions for reproducible builds; patch updates are safe.
+
+# Web server and cross-origin support
+Flask==3.0.3
+flask-cors==4.0.1
+
+# LangGraph orchestration (3-node StateGraph workflow)
+langgraph==0.2.53
+
+# Docker Python SDK — used to sandbox test execution inside containers
+docker==7.1.0
+
+# Google Gemini LLM — used in Node 2 (LLM Solver) for log analysis and fix generation
+google-generativeai==0.8.3
+
+# Git automation — used in Node 3 (GitOps) to branch, commit, and push
+gitpython==3.1.43
+
+# Environment variable management
+python-dotenv==1.0.1
+
+# Runtime utilities (bundled with Python but pinned for CI predictability)
+requests>=2.31.0
