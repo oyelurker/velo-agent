@@ -249,6 +249,8 @@ Rules: all uppercase, spaces to underscores, suffix exactly `_AI_Fix`.
 | Name | Role |
 |------|------|
 | Tejas Kumar Punyap | Team Leader |
+| Saurav Shankar | Developer |
+| Karan Mani Tripathi | Developer |
 
 ---
 
