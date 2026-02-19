@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-/* ── helpers ── */
+/* ── Count-up hook ── */
 function useCountUp(target, dur = 900) {
   const [v, setV] = useState(0);
   const raf = useRef(null);
@@ -18,77 +18,107 @@ function useCountUp(target, dur = 900) {
   return v;
 }
 
-const BUG_COLORS = {
-  LINTING:     { pill: 'rgba(79,70,229,0.15)', border: 'rgba(79,70,229,0.3)', text: '#818cf8' },
-  SYNTAX:      { pill: 'rgba(234,179,8,0.1)',  border: 'rgba(234,179,8,0.3)', text: '#fbbf24' },
-  LOGIC:       { pill: 'rgba(239,68,68,0.1)',  border: 'rgba(239,68,68,0.3)', text: '#f87171' },
-  TYPE_ERROR:  { pill: 'rgba(249,115,22,0.1)', border: 'rgba(249,115,22,0.3)', text: '#fb923c' },
-  IMPORT:      { pill: 'rgba(6,182,212,0.1)',  border: 'rgba(6,182,212,0.3)', text: '#22d3ee' },
-  INDENTATION: { pill: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.3)', text: '#34d399' },
+/* ── Bug type config ── */
+const BUG_CFG = {
+  LINTING:     { bg: '#1e1b4b', color: '#818cf8', border: 'rgba(129,140,248,0.3)' },
+  SYNTAX:      { bg: '#451a03', color: '#fbbf24', border: 'rgba(251,191,36,0.3)'  },
+  LOGIC:       { bg: '#450a0a', color: '#f87171', border: 'rgba(248,113,113,0.3)' },
+  TYPE_ERROR:  { bg: '#431407', color: '#fb923c', border: 'rgba(251,146,60,0.3)'  },
+  IMPORT:      { bg: '#083344', color: '#22d3ee', border: 'rgba(34,211,238,0.3)'  },
+  INDENTATION: { bg: '#052e16', color: '#4ade80', border: 'rgba(74,222,128,0.3)'  },
 };
 
 function BugPill({ type }) {
-  const c = BUG_COLORS[type] || { pill: 'rgba(100,116,139,0.15)', border: 'rgba(100,116,139,0.3)', text: '#94a3b8' };
+  const c = BUG_CFG[type] || { bg: 'var(--surface-3)', color: 'var(--text-3)', border: 'var(--border)' };
   return (
-    <span className="font-mono" style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 4, background: c.pill, border: `1px solid ${c.border}`, color: c.text, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+    <span className="mono" style={{
+      display: 'inline-block', padding: '2px 7px', borderRadius: 5,
+      background: c.bg, border: `1px solid ${c.border}`, color: c.color,
+      fontSize: 10, fontWeight: 700, letterSpacing: '0.04em',
+    }}>
       {type}
     </span>
   );
 }
 
+/* ── Score Ring (SVG donut) ── */
 function ScoreRing({ score, max = 200 }) {
-  const r = 40;
+  const r = 42;
   const circ = 2 * Math.PI * r;
   const [offset, setOffset] = useState(circ);
   const pct = Math.min(Math.max(score, 0), max) / max;
   useEffect(() => {
-    const t = setTimeout(() => setOffset(circ * (1 - pct)), 300);
+    const t = setTimeout(() => setOffset(circ * (1 - pct)), 200);
     return () => clearTimeout(t);
   }, [pct, circ]);
 
+  const color = score >= 100 ? '#6366f1' : score >= 80 ? '#f59e0b' : '#ef4444';
+
   return (
-    <div style={{ position: 'relative', width: 128, height: 128, flexShrink: 0 }}>
-      <svg className="w-full h-full" viewBox="0 0 100 100" style={{ width: '100%', height: '100%' }}>
-        <g className="animate-hud-outer" style={{ color: '#334155' }}>
-          <circle cx="50" cy="50" fill="none" opacity="0.5" r="46" stroke="currentColor" strokeDasharray="4 4" strokeWidth="1" />
-          <circle cx="50" cy="50" fill="none" r="46" stroke="currentColor" strokeDasharray="10 80" strokeWidth="2" />
-        </g>
-        <g className="animate-hud-inner" style={{ color: '#1e1b4b' }}>
-          <circle cx="50" cy="50" fill="none" r="36" stroke="currentColor" strokeDasharray="2 2" strokeWidth="1" />
-        </g>
-        <circle cx="50" cy="50" fill="none" r={r} stroke="#1e293b" strokeWidth="6" />
-        <circle
-          cx="50" cy="50" fill="none" r={r}
-          stroke="var(--primary-glow)"
+    <div style={{ width: 120, height: 120, position: 'relative', flexShrink: 0 }}>
+      <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+        <circle cx="50" cy="50" r={r} fill="none" stroke="var(--surface-3)" strokeWidth="7" />
+        <circle cx="50" cy="50" r={r} fill="none"
+          stroke={color}
+          strokeWidth="7"
           strokeDasharray={circ}
           strokeDashoffset={offset}
           strokeLinecap="round"
-          strokeWidth="6"
-          transform="rotate(-90 50 50)"
-          style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(.22,.61,.36,1)', filter: 'drop-shadow(0 0 3px rgba(99,102,241,0.6))' }}
+          style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.22,0.61,0.36,1)', filter: `drop-shadow(0 0 4px ${color}66)` }}
         />
-        <text x="50" y="46" textAnchor="middle" fill="white" fontSize="18" fontWeight="800" fontFamily="Space Grotesk,sans-serif">{score}</text>
-        <text x="50" y="58" textAnchor="middle" fill="#64748b" fontSize="8" fontFamily="JetBrains Mono,monospace" style={{ textTransform: 'uppercase' }}>PTS</text>
       </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.04em', color: 'var(--text)' }}>{score}</span>
+        <span className="mono" style={{ fontSize: 9, color: 'var(--text-3)', letterSpacing: '0.1em' }}>SCORE</span>
+      </div>
     </div>
   );
+}
+
+/* ── Terminal log ── */
+function buildLogLines(runs, maxRetries) {
+  const pad = n => String(n).padStart(2, '0');
+  const now = new Date();
+  const ts = (off) => {
+    const d = new Date(now.getTime() - (runs.length * 60 - off) * 1000);
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+  const lines = [
+    { tag: 'INFO',  time: ts(0),  text: `Initializing Velo Autonomous Agent...` },
+    { tag: 'INFO',  time: ts(2),  text: `Max retries: ${maxRetries}. Monitoring ${runs.length} run(s).` },
+  ];
+  runs.forEach((run, i) => {
+    const t = run.timestamp || ts(10 + i * 30);
+    lines.push({ tag: '', time: '', text: '' });
+    lines.push({ tag: 'INFO',  time: t, text: `── Iteration ${i + 1} / ${maxRetries} ──` });
+    const passed = run.status?.toUpperCase() === 'PASSED';
+    if (!passed) {
+      lines.push({ tag: 'ERROR', time: t, text: `${run.failures_count || 0} failure(s) detected.` });
+      if (run.fixes_applied) lines.push({ tag: 'AGENT', time: t, text: `Applying ${run.fixes_applied} fix(es) via Gemini 2.5 Flash...` });
+      if (run.commit_sha)    lines.push({ tag: 'PATCH', time: t, text: `Committed ${run.commit_sha} to branch.` });
+    } else {
+      lines.push({ tag: 'PASS',  time: t, text: `All tests passing — pipeline green ✓` });
+    }
+  });
+  lines.push({ tag: '', time: '', text: '' });
+  lines.push({ tag: 'INFO', time: ts(99), text: 'Pipeline monitoring complete.' });
+  return lines;
 }
 
 function TerminalLog({ runs = [], maxRetries = 5 }) {
   const allLines = buildLogLines(runs, maxRetries);
   const [shown, setShown] = useState([]);
   const timerRef = useRef(null);
-  const bodyRef = useRef(null);
+  const bodyRef  = useRef(null);
 
   useEffect(() => {
     setShown([]);
     let i = 0;
-    function tick() {
+    const tick = () => {
       if (i >= allLines.length) return;
-      setShown(prev => [...prev, allLines[i]]);
-      i++;
-      timerRef.current = setTimeout(tick, 60);
-    }
+      setShown(prev => [...prev, allLines[i++]]);
+      timerRef.current = setTimeout(tick, 55);
+    };
     timerRef.current = setTimeout(tick, 300);
     return () => clearTimeout(timerRef.current);
   }, [runs]);
@@ -99,44 +129,43 @@ function TerminalLog({ runs = [], maxRetries = 5 }) {
 
   const done = shown.length >= allLines.length;
 
+  const tagColor = { INFO: '#6366f1', ERROR: '#ef4444', AGENT: '#f59e0b', PASS: '#22c55e', PATCH: '#22d3ee' };
+
   return (
-    <div style={{ borderRadius: 12, overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', position: 'relative', border: '1px solid var(--border-muted)', background: '#05070a' }}>
-      <div className="scanlines" style={{ position: 'absolute', inset: 0, zIndex: 10, opacity: 0.3 }} />
+    <div style={{ background: '#0d0d0f', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
       {/* Title bar */}
-      <div style={{ background: '#0f1219', padding: '8px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-muted)', position: 'relative', zIndex: 20 }}>
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#475569' }}>terminal</span>
-          <span className="font-mono" style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>agent_output.sh — live</span>
+          <div style={{ display: 'flex', gap: 5 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b' }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#22c55e' }} />
+          </div>
+          <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)', marginLeft: 4 }}>agent-output — live</span>
         </div>
-        <div style={{ width: 64, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-          <svg style={{ width: '100%', height: '100%' }} preserveAspectRatio="none" viewBox="0 0 100 30">
-            <path className="animate-wave" d="M0 15 Q 10 5, 20 15 T 40 15 T 60 15 T 80 15 T 100 15" fill="none" stroke="#10b981" strokeWidth="1.5" />
-          </svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: done ? 'var(--success)' : 'var(--warning)', display: 'inline-block' }} className={done ? '' : 'pulse-dot'} />
+          <span className="mono" style={{ fontSize: 10, color: 'var(--text-3)' }}>{done ? 'COMPLETE' : 'STREAMING'}</span>
         </div>
       </div>
       {/* Log body */}
-      <div ref={bodyRef} className="custom-scrollbar font-mono" style={{ padding: 16, fontSize: 11, lineHeight: 1.6, height: 220, overflowY: 'auto', position: 'relative', zIndex: 0 }}>
+      <div ref={bodyRef} style={{ padding: '12px 16px', fontSize: 12, lineHeight: 1.7, height: 240, overflowY: 'auto', fontFamily: "'JetBrains Mono', monospace" }}>
         {shown.map((line, i) => {
           if (!line) return null;
-          if (!line.text) return <div key={i} style={{ height: 8 }} />;
-          const c = { INFO: '#6366f1', ERROR: '#ef4444', AGENT: '#f59e0b', PASS: '#10b981', PATCH: 'var(--neon-cyan)' }[line.tag] || '#94a3b8';
-          const bg = line.tag === 'PASS' ? 'rgba(16,185,129,0.05)' : 'transparent';
+          if (!line.text) return <div key={i} style={{ height: 6 }} />;
+          const c = tagColor[line.tag] || 'var(--text-3)';
           return (
-            <div key={i} style={{ display: 'flex', gap: 12, padding: '1px 0', background: bg, borderLeft: line.tag === 'PASS' ? '2px solid #10b981' : 'none', paddingLeft: line.tag === 'PASS' ? 8 : 0, marginLeft: line.tag === 'PASS' ? -8 : 0 }}>
-              <span style={{ color: '#475569', minWidth: 56, flexShrink: 0 }}>{line.time}</span>
-              <div>
-                <span style={{ color: c, fontWeight: 700 }}>[{line.tag}]</span>
-                <span style={{ color: '#cbd5e1', marginLeft: 4 }}>{line.text}</span>
-              </div>
+            <div key={i} style={{ display: 'flex', gap: 12, borderLeft: line.tag === 'PASS' ? '2px solid var(--success)' : '2px solid transparent', paddingLeft: 6, marginLeft: -8 }}>
+              <span style={{ color: 'var(--text-3)', minWidth: 52, flexShrink: 0 }}>{line.time}</span>
+              <span style={{ color: c, fontWeight: 700, minWidth: 44, flexShrink: 0 }}>[{line.tag}]</span>
+              <span style={{ color: '#d4d4d8' }}>{line.text}</span>
             </div>
           );
         })}
         {!done && (
-          <div style={{ display: 'flex', gap: 12, paddingTop: 4 }}>
-            <span style={{ color: '#475569', minWidth: 56 }}>…</span>
-            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>➜</span>
-            <span style={{ color: '#94a3b8', marginLeft: 4 }}>velo-agent --status</span>
-            <span className="animate-blinking" style={{ color: 'var(--primary)', marginLeft: 4 }}>&nbsp;</span>
+          <div style={{ display: 'flex', gap: 12, paddingLeft: 6, marginLeft: -8, borderLeft: '2px solid transparent' }}>
+            <span style={{ color: 'var(--text-3)', minWidth: 52 }}>…</span>
+            <span style={{ color: 'var(--accent)' }} className="blink-cursor">&nbsp;</span>
           </div>
         )}
       </div>
@@ -144,51 +173,20 @@ function TerminalLog({ runs = [], maxRetries = 5 }) {
   );
 }
 
-function buildLogLines(runs, maxRetries) {
-  const pad = (n) => String(n).padStart(2, '0');
-  const now = new Date();
-  const baseTime = (offset) => {
-    const d = new Date(now.getTime() - (runs.length * 60 - offset) * 1000);
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  };
-
-  const lines = [
-    { tag: 'INFO', text: `Initializing VELO AI Autonomous Agent...`, time: baseTime(0) },
-    { tag: 'INFO', text: `Max retries: ${maxRetries}. Monitoring ${runs.length} run(s).`, time: baseTime(2) },
-  ];
-
-  runs.forEach((run, i) => {
-    const t = run.timestamp || baseTime(10 + i * 30);
-    lines.push({ tag: '', text: '', time: '' });
-    lines.push({ tag: 'INFO', text: `─── Iteration ${i + 1} / ${maxRetries} ───`, time: t });
-    const passed = run.status?.toUpperCase() === 'PASSED';
-    if (!passed) {
-      lines.push({ tag: 'ERROR', text: `${run.failures_count || 0} failure(s) detected in repository.`, time: t });
-      if (run.fixes_applied) lines.push({ tag: 'AGENT', text: `Applying ${run.fixes_applied} fix(es) via Gemini 2.5 Flash...`, time: t });
-      if (run.commit_sha)   lines.push({ tag: 'PATCH', text: `Committed ${run.commit_sha} to branch.`, time: t });
-    } else {
-      lines.push({ tag: 'PASS', text: `All tests passing — pipeline green.`, time: t });
-    }
-  });
-
-  lines.push({ tag: '', text: '', time: '' });
-  lines.push({ tag: 'INFO', text: 'Pipeline monitoring complete.', time: baseTime(99) });
-  return lines;
-}
-
 /* ── Main Dashboard ── */
 export default function Dashboard({ data, onReset }) {
-  const [bugFilter, setBugFilter] = useState('ALL');
+  const [bugFilter,    setBugFilter]    = useState('ALL');
   const [copiedBranch, setCopiedBranch] = useState(false);
 
-  const isPassed = data.ci_status?.toUpperCase() === 'PASSED';
-  const failures = useCountUp(data.total_failures ?? 0);
-  const fixes    = useCountUp(data.total_fixes ?? 0);
-  const score    = data.score_breakdown?.final_score ?? data.score_breakdown?.final ?? 0;
-  const fixRate  = data.total_failures > 0 ? Math.round((data.total_fixes / data.total_failures) * 100) : 0;
+  const isPassed    = data.ci_status?.toUpperCase() === 'PASSED';
+  const failures    = useCountUp(data.total_failures ?? 0);
+  const fixesCount  = useCountUp(data.total_fixes ?? 0);
+  const score       = data.score_breakdown?.final_score ?? data.score_breakdown?.final ?? 0;
+  const fixRate     = data.total_failures > 0
+    ? Math.round((data.total_fixes / data.total_failures) * 100) : 0;
 
-  const allFixes = data.fixes_applied || data.fixes || [];
-  const cicdTimeline = data.cicd_timeline || data.timeline || [];
+  const allFixes      = data.fixes_applied || data.fixes || [];
+  const cicdTimeline  = data.cicd_timeline  || data.timeline || [];
 
   const bugCounts = allFixes.reduce((acc, f) => {
     const t = f.bug_type || 'UNKNOWN';
@@ -204,255 +202,295 @@ export default function Dashboard({ data, onReset }) {
     setTimeout(() => setCopiedBranch(false), 2000);
   };
 
-  const gradeInfo = (() => {
-    if (score >= 180) return { g: 'S', col: '#f59e0b' };
-    if (score >= 150) return { g: 'A+', col: '#6366f1' };
-    if (score >= 120) return { g: 'A', col: '#818cf8' };
-    if (score >= 90)  return { g: 'B', col: '#3b82f6' };
-    return { g: 'C', col: '#94a3b8' };
-  })();
+  const baseScore   = data.score_breakdown?.base ?? data.score_breakdown?.base_score ?? 100;
+  const speedBonus  = data.score_breakdown?.speed_bonus ?? 0;
+  const penalty     = Math.abs(data.score_breakdown?.efficiency_penalty ?? 0);
+  const maxRetries  = data.max_retries || data.max_iterations || 5;
 
   return (
-    <div style={{ background: 'var(--bg-dark)', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: 'var(--bg)', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Header */}
-      <header className="glass-panel-dark" style={{ position: 'sticky', top: 0, zIndex: 50, borderBottom: '1px solid rgba(30,41,59,0.5)', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ position: 'relative', width: 36, height: 36 }}>
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(79,70,229,0.2)', borderRadius: 8, filter: 'blur(4px)' }} />
-            <div style={{ position: 'relative', width: '100%', height: '100%', background: 'linear-gradient(135deg,#4f46e5,#1e1b4b)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(79,70,229,0.3)', boxShadow: '0 0 10px rgba(79,70,229,0.3)' }}>
-              <span className="material-symbols-outlined" style={{ color: 'white', fontSize: 20 }}>token</span>
-            </div>
+      {/* ── Header ── */}
+      <header style={{
+        position: 'sticky', top: 0, zIndex: 50,
+        borderBottom: '1px solid var(--border)',
+        background: 'rgba(9,9,11,0.9)',
+        backdropFilter: 'blur(12px)',
+        padding: '0 24px', height: 56,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 28, height: 28, background: 'var(--accent)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2.2" viewBox="0 0 24 24">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
           </div>
-          <div>
-            <h1 style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em', color: 'white', textTransform: 'uppercase' }}>
-              VELO <span style={{ color: 'var(--primary)', fontWeight: 300 }}>OPS</span>
-            </h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', boxShadow: '0 0 5px var(--success)' }} />
-              <span className="font-mono" style={{ fontSize: 10, color: '#94a3b8', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Systems Online</span>
-            </div>
-          </div>
+          <span style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-0.01em' }}>Velo</span>
+          <span style={{ color: 'var(--border)', fontSize: 16 }}>/</span>
+          <span style={{ fontSize: 13, color: 'var(--text-3)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {data.repo_url?.replace('https://github.com/', '') || 'Analysis'}
+          </span>
+          <span className={`badge ${isPassed ? '' : ''}`} style={{
+            background: isPassed ? 'var(--success-muted)' : 'var(--error-muted)',
+            color: isPassed ? 'var(--success)' : 'var(--error)',
+            border: `1px solid ${isPassed ? 'var(--success-border)' : 'var(--error-border)'}`,
+            marginLeft: 8,
+          }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: isPassed ? 'var(--success)' : 'var(--error)', display: 'inline-block' }} />
+            {isPassed ? 'PASSED' : 'FAILED'}
+          </span>
         </div>
-        <button
-          onClick={onReset}
-          style={{ position: 'relative', background: 'rgba(79,70,229,0.1)', border: '1px solid rgba(79,70,229,0.5)', color: 'var(--primary-glow)', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s', overflow: 'hidden' }}
-          className="font-mono"
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add_circle</span>
-          NEW SCAN
+        <button className="btn-ghost" onClick={onReset} style={{ fontSize: 13 }}>
+          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12l7-7 7 7"/>
+          </svg>
+          New Scan
         </button>
       </header>
 
-      {/* Main content */}
-      <main style={{ flex: 1, padding: 16, maxWidth: 680, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 120 }}>
+      {/* ── Main ── */}
+      <main style={{ flex: 1, maxWidth: 1280, width: '100%', margin: '0 auto', padding: '28px 24px 60px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* ── Mission Status + mini stats ── */}
-        <section className="fade-up" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          {/* Status card - full width */}
-          <div style={{ gridColumn: '1 / -1' }} className="glass-panel-dark" >
-            <div style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 3, background: isPassed ? 'linear-gradient(to right,rgba(16,185,129,0.5),#10b981,rgba(16,185,129,0.5))' : 'linear-gradient(to right,rgba(239,68,68,0.5),#ef4444,rgba(239,68,68,0.5))', boxShadow: isPassed ? '0 0 8px rgba(16,185,129,0.5)' : '0 0 8px rgba(239,68,68,0.5)' }} />
-              <div style={{ background: 'rgba(10,14,23,0.9)', borderRadius: 12, padding: 16, position: 'relative' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <div>
-                    <span className="font-mono" style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 4 }}>Mission Status</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 20, fontWeight: 700, color: 'white', letterSpacing: '-0.02em' }}>
-                        {isPassed ? 'PASSED' : 'FAILED'}
-                      </span>
-                      <span className="animate-pulsing-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: isPassed ? 'var(--success)' : 'var(--error)', display: 'inline-block' }} />
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span className="font-mono" style={{ display: 'block', fontSize: 10, color: '#475569' }}>EXEC TIME</span>
-                    <span className="font-mono" style={{ display: 'block', fontSize: 12, color: 'var(--neon-cyan)' }}>{data.execution_time || '—'}</span>
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <div style={{ background: 'rgba(2,4,10,0.5)', border: '1px solid rgba(30,41,59,0.5)', borderRadius: 6, padding: 8 }}>
-                    <span className="font-mono" style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Target</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#e2e8f0', fontSize: 12, overflow: 'hidden' }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 14, color: 'var(--primary)', flexShrink: 0 }}>hub</span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 11 }}>{data.repo_url?.replace('https://github.com/', '') || '—'}</span>
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(2,4,10,0.5)', border: '1px solid rgba(30,41,59,0.5)', borderRadius: 6, padding: 8, position: 'relative', overflow: 'hidden' }}>
-                    <span className="font-mono" style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Branch</span>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <code style={{ fontSize: 10, color: 'var(--cyan-ops)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>{data.branch_name || '—'}</code>
-                      <button onClick={copyBranch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedBranch ? '#34d399' : '#475569', flexShrink: 0 }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>{copiedBranch ? 'check' : 'content_copy'}</span>
+        {/* ── Stat row ── */}
+        <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[
+            {
+              label: 'CI Status',
+              value: isPassed ? 'PASSED' : 'FAILED',
+              mono: true,
+              color: isPassed ? 'var(--success)' : 'var(--error)',
+              sub: data.execution_time ? `in ${data.execution_time}` : 'completed',
+            },
+            {
+              label: 'Failures Detected',
+              value: failures,
+              color: 'var(--text)',
+              sub: `${data.total_failures || 0} total`,
+            },
+            {
+              label: 'Fixes Applied',
+              value: fixesCount,
+              color: 'var(--text)',
+              sub: `${fixRate}% fix rate`,
+            },
+            {
+              label: 'Score',
+              value: score,
+              color: score >= 100 ? 'var(--accent)' : 'var(--warning)',
+              sub: `of 200 max`,
+            },
+          ].map(s => (
+            <div key={s.label} className="card" style={{ padding: '16px 20px' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 8 }}>{s.label}</div>
+              <div style={{ fontSize: s.mono ? 16 : 28, fontWeight: 700, letterSpacing: s.mono ? '0.02em' : '-0.04em', color: s.color, lineHeight: 1.2 }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 4 }}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Run info + Score row ── */}
+        <div className="fade-in-1" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16 }}>
+
+          {/* Run summary */}
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Run Summary
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+              {[
+                { label: 'Repository', value: data.repo_url?.replace('https://github.com/', '') || '—', mono: true },
+                { label: 'Branch Created', value: data.branch_name || '—', mono: true, copy: true },
+                { label: 'Team', value: data.team_name || '—', mono: false },
+                { label: 'Leader', value: data.leader_name || '—', mono: false },
+                { label: 'Iterations Used', value: `${cicdTimeline.length} / ${maxRetries}`, mono: true },
+                { label: 'Execution Time', value: data.execution_time || '—', mono: true },
+              ].map(item => (
+                <div key={item.label} style={{ padding: '10px 14px', background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: 8 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 4 }}>{item.label}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+                    <span className={item.mono ? 'mono' : ''} style={{ fontSize: item.mono ? 12 : 13, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {item.value}
+                    </span>
+                    {item.copy && (
+                      <button onClick={copyBranch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedBranch ? 'var(--success)' : 'var(--text-3)', flexShrink: 0, padding: 0 }}>
+                        <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          {copiedBranch
+                            ? <polyline points="20 6 9 17 4 12"/>
+                            : <><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></>
+                          }
+                        </svg>
                       </button>
-                    </div>
-                  </div>
-                  <div style={{ background: 'rgba(2,4,10,0.5)', border: '1px solid rgba(30,41,59,0.5)', borderRadius: 6, padding: 8 }}>
-                    <span className="font-mono" style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Team</span>
-                    <span style={{ fontSize: 12, color: '#e2e8f0' }}>{data.team_name || '—'}</span>
-                  </div>
-                  <div style={{ background: 'rgba(2,4,10,0.5)', border: '1px solid rgba(30,41,59,0.5)', borderRadius: 6, padding: 8 }}>
-                    <span className="font-mono" style={{ fontSize: 9, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Leader</span>
-                    <span style={{ fontSize: 12, color: '#e2e8f0' }}>{data.leader_name || '—'}</span>
+                    )}
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* Failures mini card */}
-          <div className="glass-panel-dark cyber-border" style={{ borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'rgba(10,14,23,0.5)', position: 'relative' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span className="font-mono" style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase' }}>Failures</span>
-              <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--error)' }}>bug_report</span>
+          {/* Score breakdown */}
+          <div className="card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              Performance Score
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
-              <span style={{ fontSize: 28, fontWeight: 700, color: 'white', lineHeight: 1 }}>{failures}</span>
-              <span className="font-mono" style={{ fontSize: 10, color: 'var(--error)', marginBottom: 2 }}>DETECTED</span>
-            </div>
-            <div style={{ width: '100%', background: 'rgba(51,65,85,0.5)', height: 4, marginTop: 12, borderRadius: 999, overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: 'var(--error)', width: '100%', boxShadow: '0 0 8px rgba(239,68,68,0.5)' }} />
-            </div>
-          </div>
 
-          {/* Fix Rate mini card */}
-          <div className="glass-panel-dark cyber-border" style={{ borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'rgba(10,14,23,0.5)', position: 'relative' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span className="font-mono" style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase' }}>Fix Rate</span>
-              <span className="material-symbols-outlined" style={{ fontSize: 16, color: 'var(--success)' }}>auto_fix</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4 }}>
-              <span style={{ fontSize: 28, fontWeight: 700, color: 'white', lineHeight: 1 }}>{fixRate}</span>
-              <span className="font-mono" style={{ fontSize: 10, color: 'var(--success)', marginBottom: 2 }}>%</span>
-            </div>
-            <div style={{ width: '100%', background: 'rgba(51,65,85,0.5)', height: 4, marginTop: 12, borderRadius: 999, overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: 'var(--success)', width: `${fixRate}%`, boxShadow: '0 0 8px rgba(16,185,129,0.5)', transition: 'width 1s ease-out' }} />
-            </div>
-          </div>
-        </section>
-
-        {/* ── Performance HUD ── */}
-        <section className="fade-up-2 glass-panel-dark" style={{ borderRadius: 12, overflow: 'hidden', position: 'relative' }}>
-          <div style={{ background: 'rgba(10,14,23,0.8)', backdropFilter: 'blur(4px)', padding: 20, borderRadius: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border-muted)' }}>
-              <h3 className="font-mono" style={{ color: 'var(--primary-glow)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>analytics</span>
-                Performance HUD
-              </h3>
-              <span className="font-mono" style={{ fontSize: 10, background: 'rgba(79,70,229,0.1)', color: 'var(--primary)', border: '1px solid rgba(79,70,229,0.2)', padding: '2px 8px', borderRadius: 4 }}>{gradeInfo.g}</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <ScoreRing score={score} />
-              <div className="font-mono" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  { label: 'Base Score',  val: data.score_breakdown?.base ?? data.score_breakdown?.base_score ?? 100,                           color: '#94a3b8', pct: 75 },
-                  { label: 'Speed Bonus', val: `+${data.score_breakdown?.speed_bonus ?? 0}`,                                                    color: 'var(--success)', pct: 35 },
-                  { label: 'Penalty',     val: `-${Math.abs(data.score_breakdown?.efficiency_penalty ?? 0)}`,                                   color: 'var(--error)', pct: 10 },
+                  { label: 'Base',         val: baseScore,            color: '#6366f1', pct: (baseScore / 200) * 100 },
+                  { label: 'Speed Bonus',  val: `+${speedBonus}`,     color: 'var(--success)', pct: (speedBonus / 20) * 100 },
+                  { label: 'Penalty',      val: penalty ? `-${penalty}` : '0', color: penalty ? 'var(--error)' : 'var(--text-3)', pct: (penalty / 20) * 100 },
                 ].map(row => (
-                  <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                    <span style={{ color: '#94a3b8' }}>{row.label}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ height: 4, width: 48, background: 'rgba(51,65,85,0.8)', borderRadius: 999, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', background: row.color, width: `${row.pct}%`, boxShadow: `0 0 4px ${row.color}`, transition: 'width 1s ease-out' }} />
-                      </div>
-                      <span style={{ fontWeight: 700, color: row.color, minWidth: 30, textAlign: 'right' }}>{row.val}</span>
+                  <div key={row.label}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 4 }}>
+                      <span style={{ color: 'var(--text-3)' }}>{row.label}</span>
+                      <span className="mono" style={{ fontWeight: 700, color: row.color, fontSize: 12 }}>{row.val}</span>
+                    </div>
+                    <div style={{ height: 4, background: 'var(--surface-3)', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: row.color, width: `${Math.max(row.pct, 2)}%`, borderRadius: 2, transition: 'width 1s ease-out' }} />
                     </div>
                   </div>
                 ))}
-                <div style={{ paddingTop: 8, borderTop: '1px solid var(--border-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: 'white', fontWeight: 700, fontSize: 12 }}>FINAL SCORE</span>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: gradeInfo.col }}>{score}</span>
+                <div style={{ paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 600 }}>Final</span>
+                  <span className="mono" style={{ fontSize: 20, fontWeight: 800, color: score >= 100 ? 'var(--accent)' : 'var(--warning)', letterSpacing: '-0.03em' }}>{score}</span>
                 </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* ── Vulnerabilities / Fixes Table ── */}
-        <section className="fade-up-3 glass-panel-dark" style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(30,41,59,0.5)' }}>
-          <div style={{ background: 'rgba(10,14,23,0.95)' }}>
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(30,41,59,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 className="font-mono" style={{ color: '#94a3b8', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Vulnerabilities.log ({allFixes.length})</h3>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {[...Array(3)].map((_, i) => <span key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#334155' }} />)}
-              </div>
+        {/* ── Fixes Table ── */}
+        <div className="card fade-in-2" style={{ overflow: 'hidden' }}>
+          {/* Header */}
+          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="14" height="14" fill="none" stroke="var(--text-3)" strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+                <polyline points="10 9 9 9 8 9"/>
+              </svg>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>Fixes Applied</span>
+              <span className="badge" style={{ background: 'var(--surface-2)', color: 'var(--text-3)', border: '1px solid var(--border)', fontSize: 11 }}>
+                {allFixes.length}
+              </span>
             </div>
             {/* Filter pills */}
-            <div className="custom-scrollbar" style={{ padding: '8px 16px', background: 'rgba(2,4,10,0.3)', borderBottom: '1px solid rgba(30,41,59,0.3)', overflowX: 'auto', display: 'flex', gap: 8 }}>
-              {['ALL', ...Object.keys(bugCounts)].map(t => (
-                <button
-                  key={t}
-                  onClick={() => setBugFilter(t)}
-                  className="font-mono"
-                  style={{
-                    padding: '4px 8px', borderRadius: 4, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s',
-                    background: bugFilter === t ? (t === 'ALL' ? 'rgba(79,70,229,0.2)' : (BUG_COLORS[t]?.pill || 'rgba(79,70,229,0.2)')) : 'transparent',
-                    color: bugFilter === t ? (t === 'ALL' ? 'var(--primary)' : (BUG_COLORS[t]?.text || 'var(--primary)')) : '#64748b',
-                    border: bugFilter === t ? `1px solid ${t === 'ALL' ? 'rgba(79,70,229,0.3)' : (BUG_COLORS[t]?.border || 'rgba(79,70,229,0.3)')}` : '1px solid #334155',
-                  }}
-                >
-                  {t === 'ALL' ? 'ALL_TYPES' : `${t}(${bugCounts[t]})`}
-                </button>
-              ))}
-            </div>
-            {/* Table */}
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: 'rgba(2,4,10,0.5)', borderBottom: '1px solid var(--border-muted)' }}>
-                    {['File_Path', 'Classification', 'Ln', 'State'].map(h => (
-                      <th key={h} className="font-mono" style={{ padding: '8px 16px', fontSize: 10, textTransform: 'uppercase', color: '#475569', letterSpacing: '0.1em', fontWeight: 'normal', textAlign: h === 'Ln' ? 'right' : h === 'State' ? 'center' : 'left' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleFixes.length === 0 ? (
-                    <tr><td colSpan="4" style={{ padding: '24px 16px', textAlign: 'center', color: '#334155', fontSize: 13 }}>No fixes recorded.</td></tr>
-                  ) : visibleFixes.map((fix, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid rgba(30,41,59,0.2)', transition: 'background 0.15s' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(79,70,229,0.05)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <td className="font-mono" style={{ padding: '12px 16px', color: '#cbd5e1', fontSize: 12, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fix.file}</td>
-                      <td style={{ padding: '12px 16px' }}><BugPill type={fix.bug_type} /></td>
-                      <td className="font-mono" style={{ padding: '12px 16px', textAlign: 'right', color: '#475569', fontSize: 12 }}>{fix.line_number != null ? String(fix.line_number).padStart(3, '0') : '—'}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                        {fix.status?.toLowerCase() === 'fixed'
-                          ? <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--success)', filter: 'drop-shadow(0 0 5px rgba(16,185,129,0.5))' }}>check_circle</span>
-                          : <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--error)' }}>cancel</span>
-                        }
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto' }} className="no-scrollbar">
+              {['ALL', ...Object.keys(bugCounts)].map(t => {
+                const isActive = bugFilter === t;
+                const c = t !== 'ALL' ? BUG_CFG[t] : null;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => setBugFilter(t)}
+                    className="mono"
+                    style={{
+                      padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                      letterSpacing: '0.04em', cursor: 'pointer', whiteSpace: 'nowrap',
+                      background: isActive ? (c ? c.bg : 'var(--accent-muted)') : 'transparent',
+                      color:      isActive ? (c ? c.color : 'var(--accent)') : 'var(--text-3)',
+                      border: isActive ? `1px solid ${c ? c.border : 'var(--accent-border)'}` : '1px solid var(--border)',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {t === 'ALL' ? 'All' : `${t} (${bugCounts[t]})`}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </section>
+
+          {/* Table */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                  {['File', 'Bug Type', 'Line', 'Commit Message', 'Status'].map(h => (
+                    <th key={h} style={{
+                      padding: '10px 16px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)',
+                      textAlign: h === 'Line' ? 'right' : h === 'Status' ? 'center' : 'left',
+                      whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.06em',
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleFixes.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
+                      No fixes recorded for this filter.
+                    </td>
+                  </tr>
+                ) : visibleFixes.map((fix, i) => (
+                  <tr
+                    key={i}
+                    style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.1s' }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <td className="mono" style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-2)', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {fix.file}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <BugPill type={fix.bug_type} />
+                    </td>
+                    <td className="mono" style={{ padding: '12px 16px', textAlign: 'right', fontSize: 12, color: 'var(--text-3)' }}>
+                      {fix.line_number != null ? fix.line_number : '—'}
+                    </td>
+                    <td className="mono" style={{ padding: '12px 16px', fontSize: 11, color: 'var(--text-3)', maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {fix.commit_message || '—'}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      {fix.status?.toLowerCase() === 'fixed' ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'var(--success)' }}>
+                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                          Fixed
+                        </span>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'var(--error)' }}>
+                          <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          Failed
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         {/* ── Terminal Log ── */}
-        <section>
-          <TerminalLog runs={cicdTimeline} maxRetries={data.max_retries || data.max_iterations || 5} />
-        </section>
+        <div className="fade-in-3">
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+            CI/CD Agent Log
+          </div>
+          <TerminalLog runs={cicdTimeline} maxRetries={maxRetries} />
+        </div>
 
       </main>
 
-      {/* Bottom nav */}
-      <nav className="glass-panel-dark" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, borderTop: '1px solid var(--border-muted)', display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '16px 8px 24px', zIndex: 40 }}>
-        {[
-          { icon: 'dashboard', label: 'Mission', active: true },
-          { icon: 'history', label: 'Logs', active: false },
-          { icon: 'smart_toy', label: 'Agents', active: false },
-          { icon: 'settings_suggest', label: 'Config', active: false },
-        ].map(item => (
-          <a key={item.label} href="#" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, color: item.active ? 'var(--primary-glow)' : '#64748b', textDecoration: 'none' }}>
-            <div style={{ position: 'relative' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{item.icon}</span>
-              {item.active && <div style={{ position: 'absolute', inset: 0, background: 'rgba(79,70,229,0.3)', filter: 'blur(8px)', borderRadius: '50%' }} />}
-            </div>
-            <span className="font-mono" style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{item.label}</span>
-          </a>
-        ))}
-      </nav>
+      {/* ── Footer ── */}
+      <footer style={{ borderTop: '1px solid var(--border)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ fontSize: 12, color: 'var(--text-3)' }}>
+          Powered by <span style={{ color: 'var(--accent)' }}>Gemini 2.5 Flash</span> · Velo CI/CD Agent
+        </div>
+        <button className="btn-ghost" onClick={onReset} style={{ fontSize: 12, padding: '6px 12px' }}>
+          ← Back to home
+        </button>
+      </footer>
     </div>
   );
 }
