@@ -98,7 +98,8 @@ export default function App() {
     setResult(null);
 
     try {
-      const res = await fetch('http://localhost:5000/api/analyze', {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${API_BASE}/api/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -121,7 +122,7 @@ export default function App() {
           repo_url: formData.repo_url || MOCK_RESPONSE.repo_url,
           team_name: formData.team_name || MOCK_RESPONSE.team_name,
           leader_name: formData.leader_name || MOCK_RESPONSE.leader_name,
-          branch_name: `${formData.leader_name?.replace(/\s+/g, '_').toUpperCase() || 'LEADER'}_AI_Fix`,
+          branch_name: `${[formData.team_name, formData.leader_name].filter(Boolean).join(' ').replace(/\s+/g, '_').toUpperCase()}_AI_Fix`,
         });
       } else {
         setError(err.message);
@@ -230,7 +231,7 @@ export default function App() {
       <footer className="relative z-10 border-t border-[#1a1a2e] mt-16 py-6">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between flex-wrap gap-2">
           <span className="text-xs text-slate-700">Velo Autonomous CI/CD Agent — 2026</span>
-          <span className="text-xs text-slate-700 font-mono">POST → http://localhost:5000/api/analyze</span>
+          <span className="text-xs text-slate-700 font-mono">POST → {(import.meta.env.VITE_API_URL || 'http://localhost:5000')}/api/analyze</span>
         </div>
       </footer>
     </div>
