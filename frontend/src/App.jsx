@@ -46,19 +46,24 @@ export default function App() {
       <LandingPage onSubmit={handleSubmit} loading={loading} />
       {error && !loading && (
         <div style={{
-          position: 'fixed', bottom: 80, left: 16, right: 16, zIndex: 100,
-          background: '#1a0505', border: '1px solid rgba(239,68,68,0.4)',
-          borderRadius: 12, padding: '14px 18px',
+          position: 'fixed', bottom: 24, left: 24, right: 24, zIndex: 100,
+          background: 'var(--surface)', border: '1px solid var(--error-border)',
+          borderRadius: 10, padding: '14px 18px',
           display: 'flex', alignItems: 'center', gap: 12,
-          boxShadow: '0 0 20px rgba(239,68,68,0.15)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          maxWidth: 520, margin: '0 auto',
         }}>
-          <span className="material-symbols-outlined" style={{ color: '#f87171', fontSize: 20, flexShrink: 0 }}>error</span>
+          <svg width="18" height="18" fill="none" stroke="var(--error)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
           <div style={{ flex: 1 }}>
-            <p style={{ color: '#f87171', fontWeight: 600, fontSize: 13, marginBottom: 2 }}>Analysis Failed</p>
-            <p style={{ color: '#94a3b8', fontSize: 12 }}>{error}</p>
+            <p style={{ color: 'var(--error)', fontWeight: 600, fontSize: 13, marginBottom: 2 }}>Analysis Failed</p>
+            <p style={{ color: 'var(--text-3)', fontSize: 12 }}>{error}</p>
           </div>
-          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+          <button onClick={() => setError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 4 }}>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
           </button>
         </div>
       )}
