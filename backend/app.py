@@ -121,12 +121,140 @@ def _commit_results_json(repo_path: str, formatted_branch: str, payload: dict) -
 
 
 # ---------------------------------------------------------------------------
-# Auto GitHub PR creation (best-effort, requires GITHUB_TOKEN env var)
+# Authenticated clone URL (prevents "No such device or address" on Railway)
 # ---------------------------------------------------------------------------
-def _create_github_pr(repo_url: str, branch_name: str, all_fixes: list) -> str | None:
+def _clone_url_with_token(repo_url: str) -> str:
+    """Inject GITHUB_TOKEN into a GitHub HTTPS URL for credential-free cloning."""
+    token = os.getenv("GITHUB_TOKEN", "").strip()
+    if not token or "github.com" not in repo_url:
+        return repo_url
+    return repo_url.replace("https://", f"https://{token}@", 1)
+
+
+# ---------------------------------------------------------------------------
+# GitHub identity helpers
+# ---------------------------------------------------------------------------
+def _get_token_owner(token: str) -> str | None:
+    """Return the GitHub login (username) for the given token, or None on failure."""
+    try:
+        req = urlreq.Request(
+            "https://api.github.com/user",
+            headers={
+                "Authorization": f"token {token}",
+                "Accept":        "application/vnd.github+json",
+                "User-Agent":    "Velo-Agent/1.0",
+            },
+        )
+        with urlreq.urlopen(req, timeout=10) as r:
+            return json.loads(r.read().decode()).get("login")
+    except Exception as exc:
+        logger.warning("Could not resolve token owner: %s", exc)
+        return None
+
+
+def _fork_repo(repo_url: str, token: str) -> str | None:
     """
-    Create a GitHub PR from the healing branch → default branch.
-    Returns the PR HTML URL, or None if creation fails / token not set.
+    Fork repo_url into the token owner's account via the GitHub API.
+    Returns an authenticated clone URL for the new fork, or None on failure.
+    Waits up to ~12 s for GitHub to initialise the fork before returning.
+    """
+    m = re.match(r"https://github\.com/([^/]+)/([^/\s]+?)(?:\.git)?/?$", repo_url.strip())
+    if not m:
+        return None
+    owner, repo = m.group(1), m.group(2)
+
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept":        "application/vnd.github+json",
+        "Content-Type":  "application/json",
+        "User-Agent":    "Velo-Agent/1.0",
+    }
+    try:
+        req = urlreq.Request(
+            f"https://api.github.com/repos/{owner}/{repo}/forks",
+            data=b"{}",
+            headers=headers,
+            method="POST",
+        )
+        with urlreq.urlopen(req, timeout=20) as r:
+            fork_data = json.loads(r.read().decode())
+
+        fork_full_name = fork_data.get("full_name")
+        if not fork_full_name:
+            logger.warning("Fork API returned no full_name.")
+            return None
+
+        # GitHub takes a few seconds to initialise the fork
+        time.sleep(12)
+        logger.info("Fork ready: %s", fork_full_name)
+        return f"https://{token}@github.com/{fork_full_name}.git"
+
+    except Exception as exc:
+        logger.warning("Fork creation failed: %s", exc)
+        return None
+
+
+def _resolve_clone_url(repo_url: str, emit=None) -> tuple[str, str | None]:
+    """
+    Decide whether to clone the original repo or fork it first.
+
+    Returns (clone_url, fork_owner):
+    - fork_owner is the GitHub login that owns the fork (for cross-fork PRs),
+      or None if we cloned the original repo directly.
+
+    Strategy:
+      • If GITHUB_TOKEN is not set → clone original (no auth).
+      • If token owner == repo owner → clone with token (direct push will work).
+      • If token owner != repo owner → fork → clone fork (enables push + cross-fork PR).
+    """
+    def _log(msg: str) -> None:
+        logger.info(msg)
+        if emit:
+            emit({"type": "log", "tag": "INFO", "message": msg})
+
+    token = os.getenv("GITHUB_TOKEN", "").strip()
+    if not token:
+        _log("No GITHUB_TOKEN set — cloning without auth (push will be skipped).")
+        return repo_url, None
+
+    m = re.match(r"https://github\.com/([^/]+)/", repo_url)
+    repo_owner = m.group(1) if m else None
+
+    token_owner = _get_token_owner(token)
+    if not token_owner:
+        _log("Could not resolve token owner — cloning with token (best-effort).")
+        return _clone_url_with_token(repo_url), None
+
+    if repo_owner and token_owner.lower() == repo_owner.lower():
+        _log(f"Repo belongs to token owner ({token_owner}) — cloning directly.")
+        return _clone_url_with_token(repo_url), None
+
+    # Different owner → fork first
+    _log(f"Repo owned by '{repo_owner}' — forking to '{token_owner}' for push access...")
+    fork_url = _fork_repo(repo_url, token)
+    if fork_url:
+        _log(f"Fork created under {token_owner} — cloning fork.")
+        return fork_url, token_owner
+
+    _log("Fork failed — falling back to direct clone (push may fail).")
+    return _clone_url_with_token(repo_url), None
+
+
+# ---------------------------------------------------------------------------
+# Auto GitHub PR creation (supports direct push + cross-fork PRs)
+# ---------------------------------------------------------------------------
+def _create_github_pr(
+    repo_url: str,
+    branch_name: str,
+    all_fixes: list,
+    head_repo_owner: str | None = None,
+) -> str | None:
+    """
+    Create a PR on the *original* repo.
+
+    head_repo_owner: when the branch was pushed to a fork, pass the fork
+    owner's login so GitHub can find the branch (head = "fork_owner:branch").
+    Leave None when the branch was pushed directly to the original repo.
     """
     token = os.getenv("GITHUB_TOKEN", "").strip()
     if not token:
@@ -138,15 +266,17 @@ def _create_github_pr(repo_url: str, branch_name: str, all_fixes: list) -> str |
 
     owner, repo = m.group(1), m.group(2)
 
+    # Cross-fork PR: head must be "fork_owner:branch_name"
+    head = f"{head_repo_owner}:{branch_name}" if head_repo_owner else branch_name
+
     fix_lines = "\n".join(
         f"- `{f['file']}` line {f.get('line_number', '?')} — **{f['bug_type']}**"
         for f in all_fixes[:15]
     )
 
     pr_body = (
-        "## 🤖 Auto-Generated by Velo CI/CD Healing Agent\n\n"
-        f"This PR was automatically created after detecting and fixing "
-        f"**{len(all_fixes)} issue(s)** in the CI/CD pipeline.\n\n"
+        "## Velo CI/CD Healing Agent — Auto Fix\n\n"
+        f"Detected and fixed **{len(all_fixes)} issue(s)** autonomously.\n\n"
         f"### Fixes Applied\n{fix_lines}\n\n"
         "---\n*Powered by Gemini 2.5 Flash · Velo Autonomous Agent · RIFT 2026*"
     )
@@ -159,20 +289,17 @@ def _create_github_pr(repo_url: str, branch_name: str, all_fixes: list) -> str |
     }
 
     try:
-        # Get default branch
         req = urlreq.Request(
             f"https://api.github.com/repos/{owner}/{repo}",
             headers=headers,
         )
         with urlreq.urlopen(req, timeout=10) as r:
-            repo_info = json.loads(r.read().decode())
-        base = repo_info.get("default_branch", "main")
+            base = json.loads(r.read().decode()).get("default_branch", "main")
 
-        # Create PR
         pr_payload = json.dumps({
             "title": f"[AI-AGENT] Velo Auto-Fix: {len(all_fixes)} issue(s) resolved",
             "body":  pr_body,
-            "head":  branch_name,
+            "head":  head,
             "base":  base,
         }).encode()
 
@@ -183,9 +310,8 @@ def _create_github_pr(repo_url: str, branch_name: str, all_fixes: list) -> str |
             method="POST",
         )
         with urlreq.urlopen(req, timeout=10) as r:
-            pr_data = json.loads(r.read().decode())
+            pr_url = json.loads(r.read().decode()).get("html_url")
 
-        pr_url = pr_data.get("html_url")
         logger.info("GitHub PR created: %s", pr_url)
         return pr_url
 
@@ -203,6 +329,7 @@ def _run_healing_loop(
     leader_name: str,
     tmp_dir: str,
     emit=None,
+    fork_owner: str | None = None,
 ) -> dict:
     """
     Runs the full retry healing loop and returns the shaped response dict.
@@ -299,15 +426,15 @@ def _run_healing_loop(
         "fixes":           all_fixes,
     })
 
-    # Auto-create GitHub PR
+    # Auto-create GitHub PR (cross-fork if we pushed to a fork)
     pr_url = None
-    if final_status == "PASSED" and all_fixes:
+    if all_fixes:
         _e("INFO", "Creating GitHub Pull Request...")
-        pr_url = _create_github_pr(repo_url, formatted_branch, all_fixes)
+        pr_url = _create_github_pr(repo_url, formatted_branch, all_fixes, head_repo_owner=fork_owner)
         if pr_url:
             _e("INFO", f"PR created → {pr_url}")
         else:
-            _e("INFO", "GITHUB_TOKEN not set — skipping PR creation")
+            _e("INFO", "PR creation skipped (no token or push failed)")
 
     elapsed            = time.time() - start_time
     minutes, secs      = divmod(int(elapsed), 60)
@@ -376,13 +503,13 @@ def analyze():
     tmp_dir = None
     try:
         tmp_dir = tempfile.mkdtemp(prefix="velo_")
-        clone_url = _clone_url_with_token(repo_url)
+        clone_url, fork_owner = _resolve_clone_url(repo_url)
         try:
             git.Repo.clone_from(clone_url, tmp_dir)
         except git.GitCommandError as exc:
             return jsonify({"error": f"Failed to clone repository: {exc}"}), 400
 
-        response = _run_healing_loop(repo_url, team_name, leader_name, tmp_dir)
+        response = _run_healing_loop(repo_url, team_name, leader_name, tmp_dir, fork_owner=fork_owner)
         http_status = 200 if response["ci_status"] == "PASSED" else 207
         return jsonify(response), http_status
 
@@ -433,9 +560,10 @@ def analyze_stream():
             emit({"type": "log", "tag": "INFO", "message": f"Target: {repo_url}"})
 
             tmp_dir = tempfile.mkdtemp(prefix="velo_stream_")
-            emit({"type": "log", "tag": "INFO", "message": f"Cloning repository..."})
 
-            clone_url = _clone_url_with_token(repo_url)
+            # Resolve clone URL — forks the repo automatically if the token owner
+            # differs from the repo owner, enabling push access to any public repo.
+            clone_url, fork_owner = _resolve_clone_url(repo_url, emit=emit)
             try:
                 git.Repo.clone_from(clone_url, tmp_dir)
                 emit({"type": "log", "tag": "INFO", "message": "Repository cloned ✓"})
@@ -443,7 +571,7 @@ def analyze_stream():
                 emit({"type": "error", "message": f"Failed to clone repository: {exc}"})
                 return
 
-            response = _run_healing_loop(repo_url, team_name, leader_name, tmp_dir, emit=emit)
+            response = _run_healing_loop(repo_url, team_name, leader_name, tmp_dir, emit=emit, fork_owner=fork_owner)
             emit({"type": "done", "data": response})
 
         except Exception as exc:
