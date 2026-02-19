@@ -1,19 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import { useState, useEffect, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
 import AuthPage from './components/AuthPage';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-function AppContent() {
-  const navigate = useNavigate();
-  const { getIdToken } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
-  const [error, setError] = useState('');
 const TAG_COLOR = {
   INFO:  '#6366f1',
   ERROR: '#ef4444',
@@ -187,15 +180,16 @@ function AnalyzingScreen({ repoUrl, liveLog }) {
 }
 
 
-/* ── Root App ── */
-export default function App() {
+/* ── Main content (landing + analyzing + dashboard) ── */
+function AppContent() {
+  const navigate = useNavigate();
+  const { getIdToken } = useAuth();
   const [loading,    setLoading]    = useState(false);
   const [results,    setResults]    = useState(null);
   const [error,      setError]      = useState('');
   const [liveLog,    setLiveLog]    = useState([]);
   const [analyzingRepo, setAnalyzingRepo] = useState('');
 
-  // Ref so we can access latest liveLog inside the async closure
   const liveLogRef = useRef([]);
 
   const handleSubmit = async ({ repo_url, team_name, leader_name }) => {
@@ -229,14 +223,12 @@ export default function App() {
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || `Server error ${res.status}`);
-      // ── Try streaming endpoint first (new backend) ──────────────────────
-      // Falls back to the batch endpoint automatically so the deployed
-      // Railway backend (old code without /stream) still works for everyone.
+      }
+      // Try streaming endpoint first; fall back to batch if needed
       let usedStream = false;
-
       const streamRes = await fetch(`${API_URL}/api/analyze/stream`, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body:    JSON.stringify({ repo_url, team_name, leader_name }),
       });
 
@@ -282,7 +274,7 @@ export default function App() {
         // ── Batch fallback (old Railway deployment / non-streaming backend) ─
         const batchRes = await fetch(`${API_URL}/api/analyze`, {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body:    JSON.stringify({ repo_url, team_name, leader_name }),
         });
 

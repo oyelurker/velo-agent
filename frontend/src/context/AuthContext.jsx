@@ -64,9 +64,19 @@ export function AuthProvider({ children }) {
   }, [token, setToken]);
 
   const signOut = useCallback(() => {
-    setToken(null);
+    try {
+      sessionStorage.removeItem(TOKEN_KEY);
+    } catch (_) {}
+    setTokenState(null);
     setUser(null);
-  }, [setToken]);
+    // Remove ?token= from URL so refresh doesn't restore session
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('token')) {
+      url.searchParams.delete('token');
+      const newUrl = url.pathname + url.hash || '/';
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
 
   const getIdToken = useCallback(async () => {
     return token;

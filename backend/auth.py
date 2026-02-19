@@ -105,6 +105,7 @@ def github_oauth_start():
         "redirect_uri": request.url_root.rstrip("/") + "/api/auth/github/callback",
         "scope": "repo user:email",
         "state": state,
+        "prompt": "login",  # Force GitHub login screen so logout feels complete
     }
     url = GITHUB_AUTHORIZE_URL + "?" + urlencode(params)
     resp = redirect(url, code=302)
