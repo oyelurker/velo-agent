@@ -24,19 +24,24 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 
-# Load .env before importing agent so GEMINI_API_KEY is available at module level
-load_dotenv()
+# Load .env from backend directory so it's found regardless of CWD
+_load_dotenv_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(dotenv_path=_load_dotenv_path)
 
 from agent import run_healing_agent, format_branch_name  # noqa: E402
+from auth import require_auth  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # App initialisation
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
 
-# CORS — allow every origin for local/hackathon use.
+# CORS — allow every origin for local/hackathon use; allow Authorization for Firebase token.
 # In production, replace "*" with your specific frontend domain(s).
-CORS(app, resources={r"/api/*": {"origins": os.getenv("ALLOWED_ORIGINS", "*")}})
+CORS(app, resources={r"/api/*": {
+    "origins": os.getenv("ALLOWED_ORIGINS", "*"),
+    "allow_headers": ["Content-Type", "Authorization"],
+}})
 
 logging.basicConfig(
     level=logging.INFO,
@@ -121,6 +126,16 @@ def _commit_results_json(repo_path: str, formatted_branch: str, payload: dict) -
 
 
 # ---------------------------------------------------------------------------
+# Auth (Firebase) — frontend signs in with Firebase; backend only verifies token
+# ---------------------------------------------------------------------------
+@app.route("/api/auth/me", methods=["GET"])
+@require_auth
+def auth_me():
+    """Return current user from Firebase ID token (Authorization: Bearer <id_token>)."""
+    return jsonify({"user": request.current_user}), 200
+
+
+# ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
 @app.route("/health", methods=["GET"])
@@ -137,9 +152,10 @@ def health_check():
 # Primary trigger endpoint
 # ---------------------------------------------------------------------------
 @app.route("/api/analyze", methods=["POST"])
+@require_auth
 def analyze():
     """
-    Trigger the autonomous healing pipeline.
+    Trigger the autonomous healing pipeline. Requires Authorization: Bearer <firebase_id_token>.
 
     Expected JSON body:
     ┌───────────────────────────────────────────────────────────┐

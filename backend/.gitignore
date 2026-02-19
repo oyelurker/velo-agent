@@ -1,4 +1,7 @@
 .env
+# Firebase service account key — never commit
+firebase-service-account.json
+*-service-account*.json
 __pycache__/
 *.pyc
 *.pyo

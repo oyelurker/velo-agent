@@ -20,5 +20,8 @@ gitpython==3.1.43
 # Environment variable management
 python-dotenv==1.0.1
 
+# Firebase Admin SDK — verify Firebase Auth ID tokens
+firebase-admin>=6.5.0
+
 # Runtime utilities (bundled with Python but pinned for CI predictability)
 requests>=2.31.0
