@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
+import { useApp } from './context/AppContext.jsx';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -73,7 +74,7 @@ function AnalyzingScreen({ repoUrl, liveLog }) {
       <main style={{ flex: 1, maxWidth: 900, width: '100%', margin: '0 auto', padding: '36px 24px 60px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Pipeline Node Status */}
-        <div className="fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <div className="fade-in node-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
           {NODES.map((node, i) => {
             const status = nodeStatus(node.label);
             const isActive = status === 'active';
@@ -179,14 +180,15 @@ function AnalyzingScreen({ repoUrl, liveLog }) {
 
 /* ── Root App ── */
 export default function App() {
-  const [loading,    setLoading]    = useState(false);
-  const [results,    setResults]    = useState(null);
-  const [error,      setError]      = useState('');
-  const [liveLog,    setLiveLog]    = useState([]);
-  const [analyzingRepo, setAnalyzingRepo] = useState('');
-
-  // Ref so we can access latest liveLog inside the async closure
-  const liveLogRef = useRef([]);
+  const {
+    loading, setLoading,
+    results, setResults,
+    error,   setError,
+    liveLog, setLiveLog,
+    analyzingRepo, setAnalyzingRepo,
+    liveLogRef,
+    reset,
+  } = useApp();
 
   const handleSubmit = async ({ repo_url, team_name, leader_name }) => {
     setLoading(true);
@@ -270,12 +272,7 @@ export default function App() {
     }
   };
 
-  const handleReset = () => {
-    setResults(null);
-    setError('');
-    setLiveLog([]);
-    liveLogRef.current = [];
-  };
+  const handleReset = () => reset();
 
   if (results && !loading) {
     return <Dashboard data={results} onReset={handleReset} />;
