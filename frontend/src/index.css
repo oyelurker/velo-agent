@@ -28,7 +28,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  background: var(--bg);
+  background: #09090b;
   color: var(--text);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -160,3 +160,22 @@ code, pre, .mono { font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 
 .pulse-dot    { animation: pulse-dot 1.5s ease-in-out infinite; }
 .blink-cursor { animation: blink 1s step-end infinite; border-right: 2px solid; }
 .wave-anim    { stroke-dasharray: 100; stroke-dashoffset: 100; animation: wave-dash 3s linear infinite; }
+
+/* Shader background: full-bleed from viewport top (y=0); no black strip */
+.shader-bg {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: -10 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+.shader-bg canvas {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  display: block !important;
+}

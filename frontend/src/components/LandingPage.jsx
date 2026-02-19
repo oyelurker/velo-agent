@@ -58,22 +58,17 @@ export default function LandingPage({ onSubmit, loading }) {
   };
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+    <div className="relative flex min-h-screen flex-col bg-transparent">
 
-      {/* ── Top nav ── */}
-      <header style={{
-        borderBottom: '1px solid var(--border)',
-        padding: '0 24px',
-        height: 56,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
-        background: 'rgba(9,9,11,0.85)',
-        backdropFilter: 'blur(12px)',
-        zIndex: 50,
-      }}>
+      {/* ── Top nav: transparent so purple background shows through (full-bleed) ── */}
+      <header
+        className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[var(--border)] px-6"
+        style={{
+          background: 'rgba(9,9,11,0.25)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 28, height: 28, background: 'var(--accent)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2.2" viewBox="0 0 24 24">
@@ -95,8 +90,9 @@ export default function LandingPage({ onSubmit, loading }) {
         </div>
       </header>
 
-      {/* ── Main ── */}
-      <main style={{ flex: 1, maxWidth: 1200, width: '100%', margin: '0 auto', padding: '60px 24px 80px' }}>
+      {/* ── Main: full width so shader shows on sides; content constrained inside ── */}
+      <main style={{ flex: 1, width: '100%', padding: '60px 0 80px' }}>
+        <div style={{ maxWidth: 1200, width: '100%', margin: '0 auto', padding: '0 24px' }}>
 
         {/* ── Hero + Form split ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,440px)', gap: 64, alignItems: 'start' }}>
@@ -298,6 +294,8 @@ export default function LandingPage({ onSubmit, loading }) {
               </div>
             ))}
           </div>
+        </div>
+
         </div>
       </main>
 

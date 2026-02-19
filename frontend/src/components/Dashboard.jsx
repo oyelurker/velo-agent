@@ -208,17 +208,17 @@ export default function Dashboard({ data, onReset }) {
   const maxRetries  = data.max_retries || data.max_iterations || 5;
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: 'transparent', minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
 
       {/* ── Header ── */}
-      <header style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        borderBottom: '1px solid var(--border)',
-        background: 'rgba(9,9,11,0.9)',
-        backdropFilter: 'blur(12px)',
-        padding: '0 24px', height: 56,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
+      <header
+        className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[var(--border)] px-6"
+        style={{
+          background: 'rgba(9,9,11,0.25)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 28, height: 28, background: 'var(--accent)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <svg width="16" height="16" fill="none" stroke="white" strokeWidth="2.2" viewBox="0 0 24 24">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import LandingPage from './components/LandingPage';
 import Dashboard from './components/Dashboard';
+import ShaderBackground from './components/ShaderBackground';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -38,11 +39,17 @@ export default function App() {
   };
 
   if (results && !loading) {
-    return <Dashboard data={results} onReset={handleReset} />;
+    return (
+      <div style={{ position: 'relative', minHeight: '100dvh' }}>
+        <ShaderBackground />
+        <Dashboard data={results} onReset={handleReset} />
+      </div>
+    );
   }
 
   return (
-    <>
+    <div style={{ position: 'relative', minHeight: '100dvh' }}>
+      <ShaderBackground />
       <LandingPage onSubmit={handleSubmit} loading={loading} />
       {error && !loading && (
         <div style={{
@@ -67,6 +74,6 @@ export default function App() {
           </button>
         </div>
       )}
-    </>
+    </div>
   );
 }

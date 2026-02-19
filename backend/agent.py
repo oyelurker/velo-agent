@@ -70,11 +70,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger("velo.agent")
 
-# Build the Gemini client once at module load
+# Build the Gemini client lazily so the app can start without a key (fails only when LLM is used)
 _GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+_gemini_client: Optional[genai.Client] = None
+
+def _get_gemini_client() -> genai.Client:
+    global _gemini_client
+    if _gemini_client is not None:
+        return _gemini_client
+    if not _GEMINI_API_KEY:
+        raise ValueError(
+            "GEMINI_API_KEY is not set. Set it in backend/.env or get a key at https://aistudio.google.com/app/apikey"
+        )
+    _gemini_client = genai.Client(api_key=_GEMINI_API_KEY)
+    return _gemini_client
+
 if not _GEMINI_API_KEY:
-    logger.warning("GEMINI_API_KEY not set — Node 2 (LLM Solver) will fail.")
-_gemini_client = genai.Client(api_key=_GEMINI_API_KEY)
+    logger.warning("GEMINI_API_KEY not set — Node 2 (LLM Solver) will fail when analysis is run.")
 
 # ---------------------------------------------------------------------------
 # Constants — kept as named constants, NOT buried in logic
@@ -471,7 +483,7 @@ Now output Section 1 bug lines followed by the Section 2 JSON block:"""
     raw_output = ""
 
     try:
-        response = _gemini_client.models.generate_content(
+        response = _get_gemini_client().models.generate_content(
             model="gemini-2.5-flash",
             contents=prompt,
             config=genai_types.GenerateContentConfig(
