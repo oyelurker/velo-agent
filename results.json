@@ -1,0 +1,45 @@
+{
+  "repo_url": "https://github.com/oyelurker/velo-agent",
+  "team_name": "Vakratund",
+  "leader_name": "Tejas Kumar Punyap",
+  "branch_name": "VAKRATUND_TEJAS_KUMAR_PUNYAP_AI_Fix",
+  "total_failures": 2,
+  "total_fixes": 1,
+  "ci_status": "PASSED",
+  "iterations_used": 2,
+  "max_iterations": 5,
+  "timeline": [
+    {
+      "status": "FAILED",
+      "timestamp": "22:44:26",
+      "message": "2 failure(s) detected, 1 fix(es) applied",
+      "failures_in_run": 2,
+      "fixes_in_run": 1
+    },
+    {
+      "status": "PASSED",
+      "timestamp": "22:44:27",
+      "message": "All tests passing \u2014 pipeline green",
+      "failures_in_run": 0,
+      "fixes_in_run": 0
+    }
+  ],
+  "fixes": [
+    {
+      "file": "healing_test/math_utils.py",
+      "bug_type": "SYNTAX",
+      "line_number": 1,
+      "commit_message": "[AI-AGENT] Fix: add missing colon after function definition",
+      "status": "fixed",
+      "fix_description": "add missing colon after function definition"
+    },
+    {
+      "file": "healing_test/math_utils.py",
+      "bug_type": "LOGIC",
+      "line_number": 2,
+      "commit_message": "[AI-AGENT] Fix: add function performs subtraction instead of addition",
+      "status": "fixed",
+      "fix_description": "add function performs subtraction instead of addition"
+    }
+  ]
+}
