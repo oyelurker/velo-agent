@@ -1,70 +1,38 @@
 @import "tailwindcss";
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background-color: #0a0a0f;
+  background: #0a0a0f;
   color: #e2e8f0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #0f0f1a;
-}
-::-webkit-scrollbar-thumb {
-  background: #2d2d4e;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #4a4a7a;
-}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #0f0f1a; }
+::-webkit-scrollbar-thumb { background: #2d2d4e; border-radius: 3px; }
 
-@keyframes shimmer {
-  0% { background-position: -1000px 0; }
-  100% { background-position: 1000px 0; }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes ping { 75%,100% { transform: scale(2); opacity: 0; } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+.fade-in { animation: fadeInUp 0.45s ease-out forwards; }
+.fade-in-2 { animation: fadeInUp 0.45s ease-out 0.1s both; }
+.fade-in-3 { animation: fadeInUp 0.45s ease-out 0.2s both; }
+.fade-in-4 { animation: fadeInUp 0.45s ease-out 0.3s both; }
 
 .skeleton {
   background: linear-gradient(90deg, #1a1a2e 25%, #22223a 50%, #1a1a2e 75%);
-  background-size: 1000px 100%;
-  animation: shimmer 1.8s infinite linear;
-  border-radius: 6px;
+  background-size: 400px 100%;
+  animation: shimmer 1.6s infinite linear;
+  border-radius: 4px;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.85); }
-}
-
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 8px rgba(99, 102, 241, 0.4); }
-  50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.8); }
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.fade-in-up {
-  animation: fadeInUp 0.4s ease-out forwards;
-}
-
-@keyframes draw-line {
-  from { height: 0; }
-  to { height: 100%; }
-}
+.spin { animation: spin 0.9s linear infinite; }
+.spin-rev { animation: spin 1.4s linear infinite reverse; }
+.blink { animation: blink 1s step-start infinite; }
