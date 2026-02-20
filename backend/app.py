@@ -509,7 +509,6 @@ def health_check():
 # Primary trigger endpoint (batch — waits for full result)
 # ---------------------------------------------------------------------------
 @app.route("/api/analyze", methods=["POST"])
-@require_auth
 def analyze():
     """
     Trigger the autonomous healing pipeline. Requires Authorization: Bearer <jwt> (from GitHub OAuth).

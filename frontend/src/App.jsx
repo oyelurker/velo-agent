@@ -198,12 +198,10 @@ function AppContent() {
   } = useApp();
 
   const handleSubmit = async ({ repo_url, team_name, leader_name }) => {
-    const token = await getIdToken();
-    if (!token) {
-      setError('Please sign in to run analysis.');
-      navigate('/auth', { replace: true });
-      return;
-    }
+    // Auth token is optional — send it if available but don't block guests
+    const token = await getIdToken().catch(() => null);
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
     setLoading(true);
     setError('');
     setResults(null);
@@ -212,74 +210,60 @@ function AppContent() {
     liveLogRef.current = [];
 
     try {
-      const res = await fetch(`${API_URL}/api/analyze`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ repo_url, team_name, leader_name }),
-      });
-      if (res.status === 401) {
-        setError('Session expired. Please sign in again.');
-        navigate('/auth', { replace: true });
-        return;
-      }
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `Server error ${res.status}`);
-      }
-      // Try streaming endpoint first; fall back to batch if needed
+      // ── Try streaming first (SSE endpoint, no auth required) ──────────
       let usedStream = false;
-      const streamRes = await fetch(`${API_URL}/api/analyze/stream`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ repo_url, team_name, leader_name }),
-      });
+      try {
+        const streamRes = await fetch(`${API_URL}/api/analyze/stream`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body:    JSON.stringify({ repo_url, team_name, leader_name }),
+        });
 
-      if (streamRes.ok && streamRes.headers.get('content-type')?.includes('text/event-stream')) {
-        // ── Streaming path ────────────────────────────────────────────────
-        usedStream = true;
-        const reader  = streamRes.body.getReader();
-        const decoder = new TextDecoder();
-        let   buffer  = '';
+        if (streamRes.ok && streamRes.headers.get('content-type')?.includes('text/event-stream')) {
+          usedStream = true;
+          const reader  = streamRes.body.getReader();
+          const decoder = new TextDecoder();
+          let   buffer  = '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split('\n\n');
-          buffer = parts.pop() ?? '';
+            buffer += decoder.decode(value, { stream: true });
+            const parts = buffer.split('\n\n');
+            buffer = parts.pop() ?? '';
 
-          for (const part of parts) {
-            const line = part.trim();
-            if (!line.startsWith('data: ')) continue;
-            try {
-              const event = JSON.parse(line.slice(6));
-              if (event.type === 'keepalive') continue;
+            for (const part of parts) {
+              const line = part.trim();
+              if (!line.startsWith('data: ')) continue;
+              try {
+                const event = JSON.parse(line.slice(6));
+                if (event.type === 'keepalive') continue;
 
-              if (event.type === 'done') {
-                setResults({ ...event.data, liveLog: liveLogRef.current });
-              } else if (event.type === 'error') {
-                setError(event.message || 'Analysis failed.');
-              } else if (event.type === 'log') {
-                const updated = [...liveLogRef.current, event];
-                liveLogRef.current = updated;
-                setLiveLog([...updated]);
+                if (event.type === 'done') {
+                  setResults({ ...event.data, liveLog: liveLogRef.current });
+                } else if (event.type === 'error') {
+                  setError(event.message || 'Analysis failed.');
+                } else if (event.type === 'log') {
+                  const updated = [...liveLogRef.current, event];
+                  liveLogRef.current = updated;
+                  setLiveLog([...updated]);
+                }
+              } catch {
+                // ignore malformed SSE line
               }
-            } catch {
-              // ignore malformed SSE line
             }
           }
         }
+      } catch {
+        // streaming failed — fall through to batch
       }
 
       if (!usedStream) {
-        // ── Batch fallback (old Railway deployment / non-streaming backend) ─
+        // ── Batch fallback ─────────────────────────────────────────────
         const batchRes = await fetch(`${API_URL}/api/analyze`, {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
           body:    JSON.stringify({ repo_url, team_name, leader_name }),
         });
 
