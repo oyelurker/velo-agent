@@ -52,6 +52,7 @@ import logging
 import os
 import re
 import threading
+import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -99,6 +100,10 @@ logger = logging.getLogger("velo.agent")
 _GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not _GEMINI_API_KEY:
     logger.warning("GEMINI_API_KEY not set — Node 2 (LLM Solver) will fail.")
+else:
+    # Log last 4 chars for verification
+    logger.info(f"GEMINI_API_KEY loaded (ends with ...{_GEMINI_API_KEY[-4:]})")
+
 _gemini_client = None  # initialized on first call to node_llm_solver
 
 
@@ -517,22 +522,46 @@ Now output Section 1 bug lines followed by the Section 2 JSON block:"""
     # -----------------------------------------------------------------------
     raw_output = ""
 
-    try:
-        response = _get_gemini_client().models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=genai_types.GenerateContentConfig(
-                temperature       = 0.05,
-                max_output_tokens = 8192,
-            ),
-        )
-        raw_output = response.text
-        logger.info("[Node 2] LLM returned %d characters.", len(raw_output))
+    logger.info("[Node 2] Sending prompt to Gemini (len=%d)...", len(prompt))
 
-    except Exception as exc:
-        logger.exception("[Node 2] Gemini API call failed.")
-        _log("ERROR", f"Gemini API call failed: {exc}")
-        return {**state, "bug_reports": [], "fixes": {}, "error": str(exc)}
+    # -----------------------------------------------------------------------
+    # RETRY LOOP for 429 RESOURCE_EXHAUSTED
+    # -----------------------------------------------------------------------
+    max_retries = 5
+    base_delay  = 5.0
+    
+    for attempt in range(1, max_retries + 2):
+        try:
+            response = _get_gemini_client().models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=genai_types.GenerateContentConfig(
+                    temperature       = 0.05,
+                    max_output_tokens = 8192,
+                ),
+            )
+            raw_output = response.text
+            logger.info("[Node 2] LLM returned %d characters.", len(raw_output))
+            break
+
+        except Exception as exc:
+            # Check for 429 / Resource Exhausted
+            is_429 = "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc)
+            
+            if is_429 and attempt <= max_retries:
+                sleep_time = base_delay * (2 ** (attempt - 1))  # 2s, 4s, 8s
+                logger.warning(
+                    "[Node 2] Gemini 429 Rate Limit. Retrying in %.1fs (Attempt %d/%d)...",
+                    sleep_time, attempt, max_retries
+                )
+                _log("WARN", f"Rate limit hit — cooling down for {sleep_time}s...")
+                time.sleep(sleep_time)
+                continue
+            
+            # If not 429 or retries exhausted, fail hard
+            logger.exception("[Node 2] Gemini API call failed.")
+            _log("ERROR", f"Gemini API call failed: {exc}")
+            return {**state, "bug_reports": [], "fixes": {}, "error": str(exc)}
 
     # -----------------------------------------------------------------------
     # PARSE BUG REPORT LINES
@@ -599,9 +628,20 @@ def _collect_source_context(repo_path: str, test_logs: str) -> str:
     mentioned    = set(path_pattern.findall(test_logs))
 
     context_parts: List[str] = []
+    repo_path = os.path.abspath(repo_path)
+
     for raw_path in mentioned:
         # Resolve against repo root if relative
         candidate = raw_path if os.path.isabs(raw_path) else os.path.join(repo_path, raw_path)
+        candidate = os.path.abspath(candidate)
+
+        # SECURITY / SIZE CHECK:
+        # Only read files that are actually INSIDE the repo_path.
+        # This prevents reading /usr/lib/python..., site-packages, or other system files
+        # referenced in tracebacks, which causes massive prompts (160k+ chars).
+        if not candidate.startswith(repo_path):
+            continue
+            
         if os.path.isfile(candidate):
             try:
                 with open(candidate, "r", encoding="utf-8", errors="replace") as fh:

@@ -52,6 +52,7 @@ def _issue_jwt(user: dict) -> str:
         "email": user.get("email") or "",
         "iat": int(time.time()),
         "exp": int(time.time()) + JWT_EXPIRY_SECONDS,
+        "access_token": user.get("access_token"),  # Store GitHub token for agent use
     }
     return jwt_mod.encode(payload, JWT_SECRET, algorithm="HS256")
 
@@ -80,6 +81,7 @@ def get_current_user() -> dict | None:
         "id": payload.get("sub"),
         "login": payload.get("login"),
         "email": (payload.get("email") or "").strip() or None,
+        "access_token": payload.get("access_token"),
     }
 
 
@@ -155,7 +157,9 @@ def github_oauth_callback():
         "id": gh_user.get("id"),
         "login": gh_user.get("login", ""),
         "email": (gh_user.get("email") or "").strip(),
+        "email": (gh_user.get("email") or "").strip(),
         "avatar_url": gh_user.get("avatar_url"),
+        "access_token": access_token,  # Pass token to _issue_jwt
     }
     if not user["email"]:
         # Try emails API
