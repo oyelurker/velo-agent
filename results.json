@@ -1,0 +1,78 @@
+{
+  "run_timestamp": "2026-02-20T21:39:48.135558+00:00",
+  "repo_url": "C:\\Users\\savy\\AppData\\Local\\Temp\\velo_stream_7oe0axca",
+  "raw_branch_name": "Vakratund Tejas Kumar",
+  "branch_name": "VAKRATUND_TEJAS_KUMAR_AI_Fix",
+  "total_time_taken": "0m 46s",
+  "total_time_seconds": 46.49,
+  "test_files_discovered": [
+    "C:\\Users\\savy\\AppData\\Local\\Temp\\velo_stream_7oe0axca\\healing_test\\test_math.py"
+  ],
+  "total_failures_detected": 2,
+  "total_fixes_applied": 1,
+  "bug_reports": [
+    "[SYNTAX] error in healing_test/math_utils.py line 1 \u2192 Fix: add missing colon to function definition",
+    "[LOGIC] error in healing_test/math_utils.py line 2 \u2192 Fix: change subtraction to addition in add function"
+  ],
+  "files_fixed": [
+    "healing_test/math_utils.py"
+  ],
+  "branch_pushed": null,
+  "commit_sha": null,
+  "total_commits": 2,
+  "diffs": {
+    "healing_test/math_utils.py": {
+      "unified_diff": "--- a/healing_test/math_utils.py\n+++ b/healing_test/math_utils.py\n@@ -1,5 +1,5 @@\n-def add(a, b)\n-    return a - b  # wrong operator, should be +\n+def add(a, b):\n+    return a + b\n \n \n def subtract(a, b):\n@@ -13,4 +13,4 @@\n def divide(a, b):\n     if b == 0:\n         raise ValueError(\"Cannot divide by zero\")\n-    return a / b\n+    return a / b"
+    }
+  },
+  "final_ci_passed": true,
+  "final_ci_status": "PASSED",
+  "iterations_used": 2,
+  "max_retries": 5,
+  "ci_timeline": [
+    {
+      "iteration": 1,
+      "status": "FAILED",
+      "timestamp": "2026-02-20T21:39:01.661457+00:00",
+      "failures_in_run": 2,
+      "fixes_in_run": 1,
+      "commits_in_run": 1,
+      "error": null
+    },
+    {
+      "iteration": 2,
+      "status": "PASSED",
+      "timestamp": "2026-02-20T21:39:41.740792+00:00",
+      "failures_in_run": 0,
+      "fixes_in_run": 0,
+      "commits_in_run": 1,
+      "error": null
+    }
+  ],
+  "score": {
+    "base": 100,
+    "speed_bonus": 10,
+    "efficiency_penalty": 0,
+    "final": 110
+  },
+  "error": null,
+  "status": "SUCCESS",
+  "fixes": [
+    {
+      "file": "healing_test/math_utils.py",
+      "bug_type": "SYNTAX",
+      "line_number": 1,
+      "commit_message": "[AI-AGENT] Fix: add missing colon to function definition",
+      "status": "fixed",
+      "fix_description": "add missing colon to function definition"
+    },
+    {
+      "file": "healing_test/math_utils.py",
+      "bug_type": "LOGIC",
+      "line_number": 2,
+      "commit_message": "[AI-AGENT] Fix: change subtraction to addition in add function",
+      "status": "fixed",
+      "fix_description": "change subtraction to addition in add function"
+    }
+  ]
+}
